@@ -1,0 +1,59 @@
+version: '3'
+
+services:
+  web:
+    build:
+      ./web/
+    env_file:
+      postgres-variables.env
+    volumes:
+      - ./web:/data/web
+      - static_volume:/data/web/static
+      - media_volume:/data/web/media
+    command:
+      gunicorn web.wsgi:application -w 2 -b :8000
+    networks: 
+      - nginx_network
+      - db_web_network
+    depends_on:
+      - db_web
+  ldap:
+    image:
+      osixia/openldap:latest
+    networks: 
+    - db_web_network
+  db_web:
+    image: 
+      postgres:latest
+    env_file:
+      - postgres-variables.env
+    networks:
+      - db_web_network
+    volumes:
+      - db_web_volume:/var/lib/postgresql/data
+  nginx:
+    image:
+      nginx:1.13
+    ports:
+      - "8000:80"
+    volumes:
+      - ./nginx/conf.d/:/etc/nginx/conf.d
+      - static_volume:/data/web/static
+      - media_volume:/data/web/media
+    depends_on:
+      - web
+    networks: 
+      - nginx_network
+
+networks: 
+  nginx_network:
+    driver:
+      bridge
+  db_web_network:
+    driver:
+      bridge
+
+volumes:
+  db_web_volume:
+  static_volume:
+  media_volume:
